@@ -187,9 +187,6 @@ token.json
 .creds/
 .gmail-mcp/
 
-# Development documentation (contains project context for AI)
-CLAUDE.md
-
 # User configuration
 config.json
 settings.json
@@ -201,3 +198,6 @@ logs/
 # Temporary files
 temp/
 tmp/
+
+# Git worktrees
+.worktrees/
