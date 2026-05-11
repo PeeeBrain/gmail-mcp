@@ -6,7 +6,7 @@
 - `uv run python main.py` — start MCP server (requires authenticated user)
 - `uv run python main.py --login` — authenticate via OAuth2
 - `uv run python main.py --credentials /path/to/credentials.json` — set OAuth2 credentials
-- `uv run black . && uv run ruff check .` — format and lint (line length 88)
+- `uv run ruff check .` — format and lint (line length 88)
 
 ## Critical Constraints
 

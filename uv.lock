@@ -347,10 +347,9 @@ dependencies = [
     { name = "google-auth" },
     { name = "google-auth-oauthlib" },
     { name = "pydantic" },
-    { name = "ruff" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -366,12 +365,14 @@ requires-dist = [
     { name = "google-auth", specifier = ">=2.48.0" },
     { name = "google-auth-oauthlib", specifier = ">=1.2.2" },
     { name = "pydantic", specifier = ">=2.11.7" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
-    { name = "ruff", specifier = ">=0.12.7" },
-    { name = "ruff", marker = "extra == 'dev'" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff", specifier = ">=0.12.7" },
+]
 
 [[package]]
 name = "google-api-core"

@@ -4,6 +4,7 @@ import sys
 import click
 
 from src.token_store import GmailTokenStore
+from src.gmail_session import GmailSessionFactory
 from src.server import create_server
 
 
@@ -106,7 +107,8 @@ def cli(login, logout, switch_user, list_users, remove_user, credentials, curren
         sys.exit(1)
 
     # Don't print startup message when running as MCP server (stdout is used for MCP protocol)
-    mcp = create_server(token_store)
+    session_factory = GmailSessionFactory(token_store)
+    mcp = create_server(session_factory)
     mcp.run()
 
 
