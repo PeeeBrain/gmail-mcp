@@ -1,6 +1,5 @@
 """Gmail MCP Server - Entry point and CLI interface."""
 
-import asyncio
 import sys
 import click
 
@@ -56,8 +55,12 @@ def cli(login, logout, switch_user, list_users, remove_user, credentials, curren
 
     if switch_user:
         if auth_manager.get_credentials(switch_user):
-            auth_manager.set_current_user(switch_user)
-            click.echo(f"Switched to user: {switch_user}")
+            try:
+                auth_manager.set_current_user(switch_user)
+                click.echo(f"Switched to user: {switch_user}")
+            except ValueError as e:
+                click.echo(str(e), err=True)
+                sys.exit(1)
         else:
             click.echo(f"User not found or not authenticated: {switch_user}")
             sys.exit(1)
@@ -98,7 +101,7 @@ def cli(login, logout, switch_user, list_users, remove_user, credentials, curren
         sys.exit(1)
 
     # Don't print startup message when running as MCP server (stdout is used for MCP protocol)
-    asyncio.run(mcp.run())
+    mcp.run()
 
 
 if __name__ == "__main__":

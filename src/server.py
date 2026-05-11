@@ -1,10 +1,10 @@
 """MCP server implementation for Gmail functionality."""
 
 from typing import Optional, List
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
-from .auth_manager import AuthManager
-from .gmail_client import GmailClient
+from .gmail_session import GmailSession, GmailSessionFactory
+from .token_store import GmailTokenStore
 from .models import EmailRequest, DraftRequest, EmailResponse, DraftInfo, UserInfo
 from .resources.html_email_templates import HTML_EMAIL_TEMPLATES
 from .resources.email_signatures import EMAIL_SIGNATURES, get_signature_template
@@ -18,8 +18,10 @@ from .resources.email_etiquette import EMAIL_ETIQUETTE_GUIDELINES
 # Initialize MCP server
 mcp = FastMCP("Gmail MCP Server")
 
-# Global auth manager
-auth_manager = AuthManager()
+# Global local token store and session factory
+token_store = GmailTokenStore()
+auth_manager = token_store
+session_factory = GmailSessionFactory(token_store)
 
 
 # Add prompts for enhanced email composition guidance
@@ -609,12 +611,9 @@ def email_review_checklist(
     """
 
 
-def get_authenticated_client() -> Optional[GmailClient]:
-    """Get authenticated Gmail client for current user."""
-    credentials = auth_manager.get_credentials()
-    if not credentials:
-        return None
-    return GmailClient(credentials)
+def get_authenticated_session() -> Optional[GmailSession]:
+    """Get authenticated Gmail session for current user."""
+    return session_factory.create_current_session()
 
 
 @mcp.tool()
@@ -637,8 +636,8 @@ async def send_email(
         bcc: BCC recipients (optional)
         html_body: HTML version of email body (optional)
     """
-    client = get_authenticated_client()
-    if not client:
+    session = get_authenticated_session()
+    if not session:
         raise Exception(
             "No authenticated user. Please login first with: gmail-mcp --login"
         )
@@ -652,7 +651,7 @@ async def send_email(
             to=to, subject=subject, body=body, cc=cc, bcc=bcc, html_body=html_body
         )
 
-        result = client.send_email(
+        result = session.send_email(
             to=email_req.to,
             subject=email_req.subject,
             body=email_req.body,
@@ -692,8 +691,8 @@ async def create_draft(
         bcc: BCC recipients (optional)
         html_body: HTML version of email body (optional)
     """
-    client = get_authenticated_client()
-    if not client:
+    session = get_authenticated_session()
+    if not session:
         raise Exception(
             "No authenticated user. Please login first with: gmail-mcp --login"
         )
@@ -706,7 +705,7 @@ async def create_draft(
             to=to, subject=subject, body=body, cc=cc, bcc=bcc, html_body=html_body
         )
 
-        result = client.create_draft(
+        result = session.create_draft(
             to=draft_req.to,
             subject=draft_req.subject,
             body=draft_req.body,
@@ -733,8 +732,8 @@ async def send_draft(draft_id: str, ctx=None) -> EmailResponse:
     Args:
         draft_id: ID of the draft to send
     """
-    client = get_authenticated_client()
-    if not client:
+    session = get_authenticated_session()
+    if not session:
         raise Exception(
             "No authenticated user. Please login first with: gmail-mcp --login"
         )
@@ -743,7 +742,7 @@ async def send_draft(draft_id: str, ctx=None) -> EmailResponse:
         await ctx.info(f"Sending draft {draft_id}")
 
     try:
-        result = client.send_draft(draft_id)
+        result = session.send_draft(draft_id)
 
         if ctx:
             await ctx.info(f"Draft sent with message ID: {result['id']}")
@@ -763,8 +762,8 @@ async def list_drafts(max_results: int = 10, ctx=None) -> List[DraftInfo]:
     Args:
         max_results: Maximum number of drafts to return (default: 10)
     """
-    client = get_authenticated_client()
-    if not client:
+    session = get_authenticated_session()
+    if not session:
         raise Exception(
             "No authenticated user. Please login first with: gmail-mcp --login"
         )
@@ -773,7 +772,7 @@ async def list_drafts(max_results: int = 10, ctx=None) -> List[DraftInfo]:
         await ctx.info(f"Listing up to {max_results} drafts")
 
     try:
-        drafts = client.list_drafts(max_results)
+        drafts = session.list_drafts(max_results)
         result = [DraftInfo(**draft) for draft in drafts]
 
         if ctx:
@@ -790,14 +789,14 @@ async def list_drafts(max_results: int = 10, ctx=None) -> List[DraftInfo]:
 @mcp.tool()
 async def get_user_info(ctx=None) -> UserInfo:
     """Get current authenticated user information."""
-    client = get_authenticated_client()
-    if not client:
+    session = get_authenticated_session()
+    if not session:
         raise Exception(
             "No authenticated user. Please login first with: gmail-mcp --login"
         )
 
     try:
-        user_info = client.get_user_info()
+        user_info = session.get_user_info()
         result = UserInfo(**user_info)
 
         if ctx:
