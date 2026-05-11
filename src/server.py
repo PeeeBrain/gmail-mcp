@@ -15,17 +15,24 @@ from .resources.subject_line_guidelines import (
 from .resources.email_security_guidelines import get_security_guidelines_by_category
 from .resources.email_etiquette import EMAIL_ETIQUETTE_GUIDELINES
 
-# Initialize MCP server
-mcp = FastMCP("Gmail MCP Server")
+# Module-level session factory set by create_server()
+_session_factory: GmailSessionFactory | None = None
 
-# Global local token store and session factory
-token_store = GmailTokenStore()
-auth_manager = token_store
-session_factory = GmailSessionFactory(token_store)
+# Dummy MCP instance used only for decorators (no runtime use)
+_mcp = FastMCP("_internal")
 
 
-# Add prompts for enhanced email composition guidance
-@mcp.prompt()
+def get_authenticated_session() -> Optional[GmailSession]:
+    """Get authenticated Gmail session for current user."""
+    if _session_factory is None:
+        return None
+    return _session_factory.create_current_session()
+
+
+# Prompts
+
+
+@_mcp.prompt()
 def professional_email_composer(
     email_type: str = "general",
     recipient_relationship: str = "professional",
@@ -152,7 +159,7 @@ def professional_email_composer(
     """
 
 
-@mcp.prompt()
+@_mcp.prompt()
 def follow_up_email_generator(
     original_context: str,
     time_since_last: str = "1 week",
@@ -241,7 +248,7 @@ Thank you,
     return templates.get(follow_up_type, templates["polite_reminder"])
 
 
-@mcp.prompt()
+@_mcp.prompt()
 def meeting_request_composer(
     meeting_purpose: str,
     duration_minutes: int = 30,
@@ -338,7 +345,7 @@ Best regards,
     return templates.get(meeting_type, templates["discussion"])
 
 
-@mcp.prompt()
+@_mcp.prompt()
 def draft_strategy_advisor(
     email_purpose: str,
     urgency: str = "normal",
@@ -447,7 +454,7 @@ Remember: When in doubt, saving as draft and reviewing later is almost always th
     """
 
 
-@mcp.prompt()
+@_mcp.prompt()
 def email_review_checklist(
     email_type: str = "general",
     recipient_type: str = "internal",
@@ -611,12 +618,10 @@ def email_review_checklist(
     """
 
 
-def get_authenticated_session() -> Optional[GmailSession]:
-    """Get authenticated Gmail session for current user."""
-    return session_factory.create_current_session()
+# Tools
 
 
-@mcp.tool()
+@_mcp.tool()
 async def send_email(
     to: str,
     subject: str,
@@ -671,7 +676,7 @@ async def send_email(
         raise Exception(f"Failed to send email: {str(e)}")
 
 
-@mcp.tool()
+@_mcp.tool()
 async def create_draft(
     to: str,
     subject: str,
@@ -725,7 +730,7 @@ async def create_draft(
         raise Exception(f"Failed to create draft: {str(e)}")
 
 
-@mcp.tool()
+@_mcp.tool()
 async def send_draft(draft_id: str, ctx=None) -> EmailResponse:
     """Send an existing email draft.
 
@@ -755,7 +760,7 @@ async def send_draft(draft_id: str, ctx=None) -> EmailResponse:
         raise Exception(f"Failed to send draft: {str(e)}")
 
 
-@mcp.tool()
+@_mcp.tool()
 async def list_drafts(max_results: int = 10, ctx=None) -> List[DraftInfo]:
     """List email drafts.
 
@@ -786,7 +791,7 @@ async def list_drafts(max_results: int = 10, ctx=None) -> List[DraftInfo]:
         raise Exception(f"Failed to list drafts: {str(e)}")
 
 
-@mcp.tool()
+@_mcp.tool()
 async def get_user_info(ctx=None) -> UserInfo:
     """Get current authenticated user information."""
     session = get_authenticated_session()
@@ -811,7 +816,9 @@ async def get_user_info(ctx=None) -> UserInfo:
 
 
 # Resource access tools
-@mcp.resource("template://html_email/{template_name}")
+
+
+@_mcp.resource("template://html_email/{template_name}")
 def get_html_template(template_name: str) -> str:
     """Get HTML email template by name.
 
@@ -826,7 +833,7 @@ def get_html_template(template_name: str) -> str:
     return template
 
 
-@mcp.resource("template://signature/{signature_type}")
+@_mcp.resource("template://signature/{signature_type}")
 def get_signature_resource(signature_type: str) -> str:
     """Get email signature template by type.
 
@@ -838,7 +845,7 @@ def get_signature_resource(signature_type: str) -> str:
     return get_signature_template(signature_type)
 
 
-@mcp.resource("guidelines://security/{category}")
+@_mcp.resource("guidelines://security/{category}")
 def get_security_resource(category: str) -> dict:
     """Get email security guidelines by category.
 
@@ -862,7 +869,7 @@ def get_security_resource(category: str) -> dict:
     return guidelines
 
 
-@mcp.resource("guidelines://etiquette/{category}")
+@_mcp.resource("guidelines://etiquette/{category}")
 def get_etiquette_resource(category: str) -> dict:
     """Get email etiquette guidelines by category.
 
@@ -878,7 +885,7 @@ def get_etiquette_resource(category: str) -> dict:
     return guidelines
 
 
-@mcp.tool()
+@_mcp.tool()
 async def get_subject_line_help(
     email_type: str = "general", industry: str = None, ctx=None
 ) -> dict:
@@ -904,7 +911,7 @@ async def get_subject_line_help(
         raise Exception(f"Failed to get subject line help: {str(e)}")
 
 
-@mcp.tool()
+@_mcp.tool()
 async def validate_subject_line_tool(subject: str, ctx=None) -> dict:
     """Validate a subject line against best practices.
 
@@ -925,7 +932,7 @@ async def validate_subject_line_tool(subject: str, ctx=None) -> dict:
         raise Exception(f"Failed to validate subject line: {str(e)}")
 
 
-@mcp.tool()
+@_mcp.tool()
 async def get_email_templates(template_type: str = "html", ctx=None) -> dict:
     """Get available email templates.
 
@@ -959,3 +966,49 @@ async def get_email_templates(template_type: str = "html", ctx=None) -> dict:
         if ctx:
             await ctx.error(f"Failed to get templates: {str(e)}")
         raise Exception(f"Failed to get templates: {str(e)}")
+
+
+# Server assembly
+
+
+def create_server(session_factory: GmailSessionFactory) -> FastMCP:
+    """Create an MCP server wired to the given session factory.
+
+    Importing this module does NOT touch the filesystem.
+    """
+    global _session_factory
+    _session_factory = session_factory
+
+    mcp = FastMCP("Gmail MCP Server")
+
+    # Prompts
+    mcp.add_prompt(professional_email_composer)
+    mcp.add_prompt(follow_up_email_generator)
+    mcp.add_prompt(meeting_request_composer)
+    mcp.add_prompt(draft_strategy_advisor)
+    mcp.add_prompt(email_review_checklist)
+
+    # Tools
+    mcp.add_tool(send_email)
+    mcp.add_tool(create_draft)
+    mcp.add_tool(send_draft)
+    mcp.add_tool(list_drafts)
+    mcp.add_tool(get_user_info)
+    mcp.add_tool(get_subject_line_help)
+    mcp.add_tool(validate_subject_line_tool)
+    mcp.add_tool(get_email_templates)
+
+    # Resources
+    mcp.add_resource(get_html_template)
+    mcp.add_resource(get_signature_resource)
+    mcp.add_resource(get_security_resource)
+    mcp.add_resource(get_etiquette_resource)
+
+    return mcp
+
+
+def create_default_server() -> FastMCP:
+    """Create an MCP server with the default token store and session factory."""
+    token_store = GmailTokenStore()
+    session_factory = GmailSessionFactory(token_store)
+    return create_server(session_factory)

@@ -3,7 +3,8 @@
 import sys
 import click
 
-from src.server import mcp, auth_manager
+from src.token_store import GmailTokenStore
+from src.server import create_server
 
 
 # CLI interface
@@ -19,6 +20,10 @@ from src.server import mcp, auth_manager
 @click.option("--current-user", is_flag=True, help="Show current authenticated user")
 def cli(login, logout, switch_user, list_users, remove_user, credentials, current_user):
     """Gmail MCP Server CLI."""
+
+    # Create token store for CLI operations
+    token_store = GmailTokenStore()
+    auth_manager = token_store
 
     if credentials:
         try:
@@ -101,6 +106,7 @@ def cli(login, logout, switch_user, list_users, remove_user, credentials, curren
         sys.exit(1)
 
     # Don't print startup message when running as MCP server (stdout is used for MCP protocol)
+    mcp = create_server(token_store)
     mcp.run()
 
 
