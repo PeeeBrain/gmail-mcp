@@ -1,11 +1,12 @@
 """Gmail API client wrapper for sending emails."""
 
-import base64
-from email.message import EmailMessage
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
+
+from .mail_composer import MailComposer
+from .models import EmailRequest
 
 
 class GmailClient:
@@ -15,6 +16,7 @@ class GmailClient:
         """Initialize Gmail client with OAuth2 credentials."""
         self.credentials = credentials
         self.service = build("gmail", "v1", credentials=credentials)
+        self._composer = MailComposer()
 
     def get_user_info(self) -> Dict[str, Any]:
         """Get current user's Gmail profile information."""
@@ -33,37 +35,18 @@ class GmailClient:
         to: str,
         subject: str,
         body: str,
-        cc: Optional[str] = None,
-        bcc: Optional[str] = None,
-        html_body: Optional[str] = None,
+        cc: str | None = None,
+        bcc: str | None = None,
+        html_body: str | None = None,
     ) -> Dict[str, Any]:
         """Send an email message."""
         try:
-            message = EmailMessage()
+            request = EmailRequest(
+                to=to, subject=subject, body=body, cc=cc, bcc=bcc, html_body=html_body
+            )
+            sender = self.get_user_info()["email"]
+            raw_message = self._composer.compose(request, sender)
 
-            # Set recipients
-            message["To"] = to
-            if cc:
-                message["Cc"] = cc
-            if bcc:
-                message["Bcc"] = bcc
-
-            # Set subject and sender
-            message["Subject"] = subject
-            user_info = self.get_user_info()
-            message["From"] = user_info["email"]
-
-            # Set body content
-            if html_body:
-                message.set_content(body)  # Plain text version
-                message.add_alternative(html_body, subtype="html")
-            else:
-                message.set_content(body)
-
-            # Encode message
-            raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
-
-            # Send message
             send_message = (
                 self.service.users()
                 .messages()
@@ -85,37 +68,18 @@ class GmailClient:
         to: str,
         subject: str,
         body: str,
-        cc: Optional[str] = None,
-        bcc: Optional[str] = None,
-        html_body: Optional[str] = None,
+        cc: str | None = None,
+        bcc: str | None = None,
+        html_body: str | None = None,
     ) -> Dict[str, Any]:
         """Create an email draft."""
         try:
-            message = EmailMessage()
+            request = EmailRequest(
+                to=to, subject=subject, body=body, cc=cc, bcc=bcc, html_body=html_body
+            )
+            sender = self.get_user_info()["email"]
+            raw_message = self._composer.compose(request, sender)
 
-            # Set recipients
-            message["To"] = to
-            if cc:
-                message["Cc"] = cc
-            if bcc:
-                message["Bcc"] = bcc
-
-            # Set subject and sender
-            message["Subject"] = subject
-            user_info = self.get_user_info()
-            message["From"] = user_info["email"]
-
-            # Set body content
-            if html_body:
-                message.set_content(body)
-                message.add_alternative(html_body, subtype="html")
-            else:
-                message.set_content(body)
-
-            # Encode message
-            raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
-
-            # Create draft
             draft = (
                 self.service.users()
                 .drafts()

@@ -4,7 +4,7 @@ __version__ = "0.1.0"
 
 from .gmail_client import GmailClient
 from .gmail_session import GmailSession, GmailSessionFactory
-from .models import EmailRequest, DraftRequest, EmailResponse, DraftInfo, UserInfo
+from .models import EmailRequest, EmailResponse, DraftInfo, UserInfo
 from .token_store import AuthManager, GmailTokenStore
 
 __all__ = [
@@ -14,7 +14,6 @@ __all__ = [
     "GmailSession",
     "GmailSessionFactory",
     "EmailRequest",
-    "DraftRequest",
     "EmailResponse",
     "DraftInfo",
     "UserInfo",

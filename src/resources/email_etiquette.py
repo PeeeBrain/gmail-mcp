@@ -348,9 +348,7 @@ def assess_email_tone(
     detected_tone = (
         "formal"
         if formal_count > casual_count
-        else "casual"
-        if casual_count > 0
-        else "professional"
+        else "casual" if casual_count > 0 else "professional"
     )
 
     appropriate = (

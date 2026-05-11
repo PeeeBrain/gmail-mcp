@@ -15,17 +15,6 @@ class EmailRequest(BaseModel):
     html_body: Optional[str] = None
 
 
-class DraftRequest(BaseModel):
-    """Request model for creating a draft."""
-
-    to: str
-    subject: str
-    body: str
-    cc: Optional[str] = None
-    bcc: Optional[str] = None
-    html_body: Optional[str] = None
-
-
 class EmailResponse(BaseModel):
     """Response model for email operations."""
 

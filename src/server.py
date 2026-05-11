@@ -5,7 +5,7 @@ from fastmcp import FastMCP
 
 from .gmail_session import GmailSession, GmailSessionFactory
 from .token_store import GmailTokenStore
-from .models import EmailRequest, DraftRequest, EmailResponse, DraftInfo, UserInfo
+from .models import EmailRequest, EmailResponse, DraftInfo, UserInfo
 from .resources.html_email_templates import HTML_EMAIL_TEMPLATES
 from .resources.email_signatures import EMAIL_SIGNATURES, get_signature_template
 from .resources.subject_line_guidelines import (
@@ -701,7 +701,7 @@ async def create_draft(
         await ctx.info(f"Creating draft for {to}")
 
     try:
-        draft_req = DraftRequest(
+        draft_req = EmailRequest(
             to=to, subject=subject, body=body, cc=cc, bcc=bcc, html_body=html_body
         )
 
