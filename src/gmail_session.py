@@ -1,11 +1,12 @@
 """Gmail operation session for the selected local Gmail user."""
 
+from typing import Protocol
+
 from google.oauth2.credentials import Credentials
 
 from .gmail_gateway import GmailGateway
 from .mail_composer import MailComposer
 from .models import EmailRequest
-from .token_store import GmailTokenStore
 
 
 class GmailSession:
@@ -62,18 +63,17 @@ class GmailSession:
 
 
 class GmailSessionFactory:
-    """Creates Gmail sessions from the local token store."""
-
-    def __init__(self, token_store: GmailTokenStore):
-        self.token_store = token_store
-
-    def create_current_session(self) -> GmailSession | None:
-        credentials = self.token_store.get_credentials()
-        if not credentials:
-            return None
-        return self.create_session(credentials)
+    """Creates Gmail sessions from Google OAuth credentials."""
 
     def create_session(self, credentials: Credentials) -> GmailSession:
         gateway = GmailGateway(credentials)
         composer = MailComposer()
         return GmailSession(gateway, composer)
+
+
+class CurrentGmailSessionFactory(Protocol):
+    """Creates a Gmail session for the current MCP request or process."""
+
+    def create_current_session(self) -> GmailSession | None:
+        """Return a Gmail session, or None when Gmail is not authorized."""
+        ...
