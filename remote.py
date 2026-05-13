@@ -8,9 +8,9 @@ from src.server import create_server
 
 def _required_env(name: str) -> str:
     value = os.environ.get(name)
-    if not value:
+    if value is None or not value.strip():
         raise RuntimeError(f"{name} must be set for the remote Gmail MCP server")
-    return value
+    return value.strip()
 
 
 def create_remote_server():
@@ -19,7 +19,7 @@ def create_remote_server():
         client_id=_required_env("GOOGLE_OAUTH_CLIENT_ID"),
         client_secret=_required_env("GOOGLE_OAUTH_CLIENT_SECRET"),
         refresh_token=_required_env("GOOGLE_OAUTH_REFRESH_TOKEN"),
-        allowed_gmail_email=_required_env("ALLOWED_GMAIL_EMAIL")
+        allowed_gmail_email=_required_env("ALLOWED_GMAIL_EMAIL"),
     )
     return create_server(session_factory)
 
