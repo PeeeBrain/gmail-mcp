@@ -1,13 +1,13 @@
 # Gmail MCP Server
 
-A remote FastMCP server for sending Gmail messages through a single allowed
-Gmail identity. The server is designed for Prefect Horizon and is protected by
-Google OAuth at MCP connection time.
+A remote FastMCP server for sending Gmail messages through a single owner Gmail
+identity. The server is designed for Prefect Horizon and relies on Horizon's
+gateway authentication for MCP access.
 
 ## Features
 
-- Google OAuth MCP access with FastMCP `GoogleProvider`
-- Allowed Gmail identity enforcement on every Gmail operation
+- Horizon-managed MCP authentication
+- Server-owned Gmail refresh token for the owner Gmail identity
 - Gmail send, draft creation, draft listing, and draft sending tools
 - Professional email composition prompts, resources, and helper tools
 - Remote-only Horizon entry point at `main.py:mcp`
@@ -19,39 +19,25 @@ Deploy this repository to Prefect Horizon from the default branch.
 Configure Horizon with:
 
 - Entrypoint: `main.py:mcp`
-- Horizon authentication: disabled for this server, because FastMCP Google OAuth
-  protects the MCP endpoint directly
+- Horizon authentication: enabled
 
 Set these deployment environment variables:
 
-- `GOOGLE_OAUTH_CLIENT_ID`: Google OAuth web client ID
-- `GOOGLE_OAUTH_CLIENT_SECRET`: Google OAuth web client secret
-- `GMAIL_MCP_BASE_URL`: deployed server base URL, for example
-  `https://your-server-name.fastmcp.app`
-- `ALLOWED_GMAIL_EMAIL`: the only Gmail address allowed to connect and send
-  mail
-- `FASTMCP_JWT_SIGNING_KEY`: optional stable signing secret so clients do not
-  need to re-authenticate after every server restart
+- `GOOGLE_OAUTH_CLIENT_ID`: Google OAuth client ID for the owner Gmail token
+- `GOOGLE_OAUTH_CLIENT_SECRET`: Google OAuth client secret for the owner Gmail
+  token
+- `GOOGLE_OAUTH_REFRESH_TOKEN`: refresh token for the owner Gmail identity
+- `ALLOWED_GMAIL_EMAIL`: the Gmail address the refresh token must belong to
 
-The Google OAuth client must allow the FastMCP callback for the deployed base
-URL. By default FastMCP uses `/auth/callback`, so add:
+The Google OAuth refresh token must include these scopes:
 
 ```text
-https://your-server-name.fastmcp.app/auth/callback
-```
-
-The Google OAuth consent screen must include these scopes:
-
-```text
-openid
-https://www.googleapis.com/auth/userinfo.email
 https://www.googleapis.com/auth/gmail.send
 https://www.googleapis.com/auth/gmail.modify
 ```
 
-Only the Google account matching `ALLOWED_GMAIL_EMAIL` can use the Gmail tools.
-Other Google accounts may complete Google login, but Gmail operations are
-rejected server-side.
+Horizon controls who may connect to the MCP server. The backend uses the
+configured owner Gmail refresh token for Gmail API calls.
 
 ## Local Verification
 
@@ -66,9 +52,8 @@ Inspect the Horizon entry point with dummy local configuration:
 ```bash
 GOOGLE_OAUTH_CLIENT_ID=test.apps.googleusercontent.com \
 GOOGLE_OAUTH_CLIENT_SECRET=test \
-GMAIL_MCP_BASE_URL=http://localhost:8000 \
+GOOGLE_OAUTH_REFRESH_TOKEN=test-refresh-token \
 ALLOWED_GMAIL_EMAIL=owner@example.com \
-FASTMCP_JWT_SIGNING_KEY=test-signing-key \
 uv run fastmcp inspect main.py:mcp
 ```
 
