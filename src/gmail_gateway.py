@@ -6,7 +6,15 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
 
-from .models import DraftInfo, EmailResponse, UserInfo
+from .models import (
+    AttachmentInfo,
+    DraftInfo,
+    EmailAddress,
+    EmailDetail,
+    EmailListItem,
+    EmailResponse,
+    UserInfo,
+)
 
 
 class GmailError(Exception):
@@ -153,8 +161,6 @@ class GmailGateway:
 
         Uses Gmail's native search syntax for the query parameter.
         """
-        from .models import EmailListItem
-
         try:
             kwargs: dict = {
                 "userId": "me",
@@ -213,8 +219,6 @@ class GmailGateway:
 
     def get_message(self, email_id: str) -> "EmailDetail":
         """Get full message content by ID."""
-        from .models import EmailDetail
-
         try:
             detail = (
                 self._service.users()
@@ -289,7 +293,6 @@ class GmailGateway:
     @staticmethod
     def _parse_email_address(header_value: str):
         """Parse a single email address header value (e.g. 'Alice <alice@example.com>')."""
-        from .models import EmailAddress
         import re
         match = re.match(r"(.+?)\s*<(.+?)>", header_value)
         if match:
@@ -299,7 +302,6 @@ class GmailGateway:
     @staticmethod
     def _parse_email_addresses(header_value: str) -> list:
         """Parse multiple email addresses from a header value."""
-        from .models import EmailAddress
         if not header_value:
             return []
         import re
@@ -325,7 +327,6 @@ class GmailGateway:
 
         Returns (body_text: str, body_html: str, attachments: list[AttachmentInfo])
         """
-        from .models import AttachmentInfo
         import base64
 
         body_text = ""
