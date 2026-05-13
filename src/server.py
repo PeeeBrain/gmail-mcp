@@ -3,8 +3,7 @@
 from typing import Optional, List
 from fastmcp import FastMCP
 
-from .gmail_session import GmailSession, GmailSessionFactory
-from .token_store import GmailTokenStore
+from .gmail_session import CurrentGmailSessionFactory, GmailSession
 from .models import EmailRequest, EmailResponse, DraftInfo, UserInfo
 from .guidance import (
     register_guidance_prompts,
@@ -13,7 +12,7 @@ from .guidance import (
 )
 
 # Module-level session factory set by create_server()
-_session_factory: GmailSessionFactory | None = None
+_session_factory: CurrentGmailSessionFactory | None = None
 
 # Dummy MCP instance used only for decorators (no runtime use)
 _mcp = FastMCP("_internal")
@@ -52,7 +51,7 @@ async def send_email(
     session = get_authenticated_session()
     if not session:
         raise Exception(
-            "No authenticated user. Please login first with: gmail-mcp --login"
+            "No authorized Google user. Connect through Google OAuth first."
         )
 
     if ctx:
@@ -107,7 +106,7 @@ async def create_draft(
     session = get_authenticated_session()
     if not session:
         raise Exception(
-            "No authenticated user. Please login first with: gmail-mcp --login"
+            "No authorized Google user. Connect through Google OAuth first."
         )
 
     if ctx:
@@ -148,7 +147,7 @@ async def send_draft(draft_id: str, ctx=None) -> EmailResponse:
     session = get_authenticated_session()
     if not session:
         raise Exception(
-            "No authenticated user. Please login first with: gmail-mcp --login"
+            "No authorized Google user. Connect through Google OAuth first."
         )
 
     if ctx:
@@ -178,7 +177,7 @@ async def list_drafts(max_results: int = 10, ctx=None) -> List[DraftInfo]:
     session = get_authenticated_session()
     if not session:
         raise Exception(
-            "No authenticated user. Please login first with: gmail-mcp --login"
+            "No authorized Google user. Connect through Google OAuth first."
         )
 
     if ctx:
@@ -205,7 +204,7 @@ async def get_user_info(ctx=None) -> UserInfo:
     session = get_authenticated_session()
     if not session:
         raise Exception(
-            "No authenticated user. Please login first with: gmail-mcp --login"
+            "No authorized Google user. Connect through Google OAuth first."
         )
 
     try:
@@ -226,7 +225,9 @@ async def get_user_info(ctx=None) -> UserInfo:
 # Server assembly
 
 
-def create_server(session_factory: GmailSessionFactory) -> FastMCP:
+def create_server(
+    session_factory: CurrentGmailSessionFactory, *, auth=None
+) -> FastMCP:
     """Create an MCP server wired to the given session factory.
 
     Importing this module does NOT touch the filesystem.
@@ -234,7 +235,7 @@ def create_server(session_factory: GmailSessionFactory) -> FastMCP:
     global _session_factory
     _session_factory = session_factory
 
-    mcp = FastMCP("Gmail MCP Server")
+    mcp = FastMCP("Gmail MCP Server", auth=auth)
 
     # Guidance prompts, resources, and tools
     register_guidance_prompts(mcp)
@@ -252,7 +253,5 @@ def create_server(session_factory: GmailSessionFactory) -> FastMCP:
 
 
 def create_default_server() -> FastMCP:
-    """Create an MCP server with the default token store and session factory."""
-    token_store = GmailTokenStore()
-    session_factory = GmailSessionFactory(token_store)
-    return create_server(session_factory)
+    """The remote-only server is exported from main.py as mcp."""
+    raise RuntimeError("Local stdio server mode has been decommissioned")

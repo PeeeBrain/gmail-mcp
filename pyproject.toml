@@ -2,28 +2,23 @@
 name = "gmail-mcp"
 version = "0.1.0"
 description = "Gmail MCP Server for sending emails via Gmail API"
-readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=2.13.3",
     "google-auth>=2.48.0",
-    "google-auth-oauthlib>=1.2.2",
     "google-api-python-client>=2.187.0",
     "pydantic>=2.11.7",
-    "cryptography>=45.0.6",
-    "click>=8.2.1",
-    "ruff>=0.12.7",
 ]
 
-[project.scripts]
-gmail-mcp = "main:cli"
-
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "pytest-asyncio",
-    "ruff",
+    "ruff>=0.12.7",
 ]
+
+[tool.uv]
+package = false
 
 [tool.ruff]
 line-length = 88

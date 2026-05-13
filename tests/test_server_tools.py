@@ -5,18 +5,18 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.server import create_server, get_authenticated_session
-from src.gmail_session import GmailSessionFactory
+from src.gmail_session import CurrentGmailSessionFactory
 
 
 class TestCreateServer:
     def test_creates_fastmcp_instance(self):
-        fake_factory = MagicMock(spec=GmailSessionFactory)
+        fake_factory = MagicMock(spec=CurrentGmailSessionFactory)
         mcp = create_server(fake_factory)
 
         assert mcp.name == "Gmail MCP Server"
 
     def test_sets_session_factory(self):
-        fake_factory = MagicMock(spec=GmailSessionFactory)
+        fake_factory = MagicMock(spec=CurrentGmailSessionFactory)
         create_server(fake_factory)
 
         assert (
@@ -38,14 +38,14 @@ class TestCreateServer:
         assert server_module._session_factory is None
 
     def test_missing_session_returns_auth_error(self):
-        fake_factory = MagicMock(spec=GmailSessionFactory)
+        fake_factory = MagicMock(spec=CurrentGmailSessionFactory)
         fake_factory.create_current_session.return_value = None
         mcp = create_server(fake_factory)
 
         # Calling a tool with no session should raise the auth error
         import asyncio
 
-        with pytest.raises(Exception, match="No authenticated user"):
+        with pytest.raises(Exception, match="No authorized Google user"):
             asyncio.run(
                 mcp.call_tool("send_email", {"to": "a", "subject": "b", "body": "c"})
             )

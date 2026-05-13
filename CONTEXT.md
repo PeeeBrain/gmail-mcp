@@ -1,80 +1,61 @@
 # Gmail MCP Server
 
-A local MCP server that lets an MCP client compose and send mail through a selected Gmail identity without exposing Google credentials to the client.
+A remote MCP server that lets an allowed Gmail owner compose and send mail
+through Gmail after authenticating with Google OAuth.
 
 ## Language
 
-**Local Gmail Agent**:
-An MCP server process running on the user's machine over stdio with access to locally stored Gmail credentials.
-_Avoid_: Remote Gmail server, hosted Gmail API
+**Single-User Remote Gmail Agent**:
+An MCP server deployed to remote hosting that performs Gmail operations for one allowed Gmail identity.
+_Avoid_: Local Gmail agent, multi-user Gmail server
 
-**Gmail User**:
-A Google account whose OAuth credentials are stored locally and can be selected for Gmail operations.
-_Avoid_: Account, profile
+**Allowed Gmail Identity**:
+The only Gmail User permitted to authenticate to and operate the Single-User Remote Gmail Agent.
+_Avoid_: Any Google user, shared Gmail user
 
-**Current Gmail User**:
-The single Gmail User selected for a running local server process.
-_Avoid_: Active account, default account
-
-**User Selection**:
-The CLI-only act of choosing which Gmail User becomes the Current Gmail User before the local server starts.
-_Avoid_: Runtime switch, account switching
+**MCP Access Identity**:
+The Google-authenticated identity of the caller allowed to connect to the remote MCP server.
+_Avoid_: Gmail token store user, local current user
 
 **Google OAuth Client Credentials**:
-The downloaded Google Cloud desktop OAuth client configuration used to authenticate Gmail Users.
-_Avoid_: Credentials, secrets
+The Google Cloud web OAuth client configuration used by FastMCP to authenticate MCP clients and request Gmail scopes.
+_Avoid_: Desktop credentials, local credentials file
 
-**Gmail Token Store**:
-The local encrypted storage containing OAuth tokens for Gmail Users.
-_Avoid_: Auth cache, credential store
+**Gmail User**:
+The Google account whose Gmail mailbox is operated by the server.
+_Avoid_: Account, profile
 
 **Gmail Session**:
-Ready-to-use Gmail capability for the Current Gmail User in a running Local Gmail Agent.
+Ready-to-use Gmail capability created from the current request's Google OAuth access token.
 _Avoid_: Credentials, client
 
 **Gmail Session Factory**:
-The module that creates a Gmail Session for the Current Gmail User from the Gmail Token Store.
-_Avoid_: Auth manager, client factory
+The module that creates a Gmail Session from Google OAuth credentials.
+_Avoid_: Token store, auth manager
 
 ## Relationships
 
-- A **Local Gmail Agent** has exactly one **Current Gmail User** at a time.
-- A **Gmail User** is authenticated using **Google OAuth Client Credentials**.
-- A **Gmail Token Store** contains credentials for zero or more **Gmail Users**.
-- A **Gmail Token Store** refreshes and persists tokens before a **Gmail Session** is created.
-- A **Gmail Token Store** does not expose Gmail User email addresses in token filenames.
-- A **Gmail Token Store** migrates legacy raw-email token filenames to private token filenames.
-- A **Gmail Token Store** stores the Current Gmail User pointer using a private token identifier, not a raw email address.
-- A **Gmail Token Store** migrates legacy Current Gmail User pointers from raw email addresses to private token identifiers.
-- A **Current Gmail User** must exist before the **Local Gmail Agent** can perform Gmail operations.
-- **User Selection** happens outside the MCP tool surface.
-- A **Local Gmail Agent** without a **Current Gmail User** fails during startup rather than exposing unusable Gmail tools.
-- A **Gmail Session** belongs to exactly one **Current Gmail User**.
-- A **Gmail Session Factory** creates a **Gmail Session** from the **Gmail Token Store** for the **Current Gmail User**.
+- A **Single-User Remote Gmail Agent** has exactly one **Allowed Gmail Identity**.
+- A **Single-User Remote Gmail Agent** derives its **MCP Access Identity** from Google OAuth.
+- A **Single-User Remote Gmail Agent** allows Gmail operations only for the **Allowed Gmail Identity**.
+- A **Single-User Remote Gmail Agent** verifies the **Allowed Gmail Identity** on every Gmail operation.
+- A **Single-User Remote Gmail Agent** requests only email identity, Gmail send, and Gmail modify Google OAuth scopes.
+- A **Gmail Session** belongs to the **MCP Access Identity** for the current request.
+- A **Gmail Session Factory** creates a **Gmail Session** from the current request's Google OAuth access token.
+- The server no longer supports local stdio mode or a local Gmail token store.
 
-## Example dialogue
+## Example Dialogue
 
-> **Dev:** "Should FastMCP OAuth authenticate each request before sending mail?"
-> **Domain expert:** "Not for this rewrite. The **Local Gmail Agent** runs over stdio and uses the **Current Gmail User** from the local **Gmail Token Store**."
+> **Dev:** "Can anyone with the Horizon URL send mail?"
+> **Domain expert:** "No. The server requires Google OAuth and only the **Allowed Gmail Identity** can use Gmail tools."
 >
-> **Dev:** "Can the MCP client switch the **Current Gmail User** while the server is running?"
-> **Domain expert:** "No. **User Selection** is a CLI operation before startup; MCP tools can report the selected user but not change it."
+> **Dev:** "Does the server keep refresh tokens in `~/.gmail-mcp/`?"
+> **Domain expert:** "No. Local stdio mode has been decommissioned; Gmail operations use the current request's Google OAuth access token."
 >
-> **Dev:** "Should the server start if no **Current Gmail User** exists?"
-> **Domain expert:** "No. The **Local Gmail Agent** should fail during startup and tell the user to authenticate first."
->
-> **Dev:** "Does the **Gmail Token Store** hold only one **Gmail User**?"
-> **Domain expert:** "No. It may hold multiple Gmail Users, but one is chosen as the **Current Gmail User** before the local server starts."
->
-> **Dev:** "Should tool handlers construct Gmail clients from raw credentials?"
-> **Domain expert:** "No. They should use a **Gmail Session** for the **Current Gmail User**."
->
-> **Dev:** "Does a **Gmail Session** refresh OAuth tokens?"
-> **Domain expert:** "No. The **Gmail Token Store** returns usable credentials before the **Gmail Session** is created."
->
-> **Dev:** "Should the token storage module and Gmail operation module be the same thing?"
-> **Domain expert:** "No. Rewrite the storage implementation if needed, but keep **Gmail Token Store**, **Gmail Session Factory**, and **Gmail Session** as separate concepts."
+> **Dev:** "Should Horizon authentication also be enabled?"
+> **Domain expert:** "No. FastMCP Google OAuth protects the MCP endpoint directly for this server."
 
-## Flagged ambiguities
+## Flagged Ambiguities
 
-- "auth" can mean MCP client authentication or Google OAuth authentication. Resolved for the initial rewrite: keep MCP local over stdio and focus auth work on the **Gmail User** flow.
+- "auth" can mean MCP access authentication or Gmail API authorization. Current resolution: a single Google OAuth flow protects MCP access and grants Gmail send/modify scopes for the **Allowed Gmail Identity**.
+- "remote Gmail server" was explored as both multi-user and single-user. Current target: a **Single-User Remote Gmail Agent** only.

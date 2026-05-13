@@ -3,30 +3,31 @@
 ## Commands
 
 - `uv sync` — install dependencies
-- `uv run python main.py` — start MCP server (requires authenticated user)
-- `uv run python main.py --login` — authenticate via OAuth2
-- `uv run python main.py --credentials /path/to/credentials.json` — set OAuth2 credentials
-- `uv run black . && uv run ruff check .` — format and lint (line length 88)
+- `uv run fastmcp inspect main.py:mcp` — inspect the Horizon entry point
+- `uv run ruff check .` — format and lint (line length 88)
+- `uv run pytest` — run the test suite
 
 ## Critical Constraints
 
 - **Python 3.12+ required** (`.python-version` pins 3.12)
-- **No automated tests exist** — `tests/` is empty; pytest deps are unused
-- **MCP protocol uses stdout** — never print to stdout in the server startup path or tool handlers; use `click.echo(..., err=True)` or `ctx.info()` instead
-- **Server requires authenticated user** — exits with code 1 if no current user in `~/.gmail-mcp/`
-- **OAuth2 credentials required** — obtain Desktop app credentials from Google Cloud Console with Gmail API enabled, add yourself as a test user
+- **Remote-only MCP server** — local stdio mode and CLI token management have been decommissioned
+- **Horizon entry point is `main.py:mcp`** — Horizon deploys the default branch and imports this object
+- **FastMCP Google OAuth protects the MCP endpoint** — do not enable a second Horizon auth layer for this server
+- **Allowed Gmail identity is enforced per request** — every Gmail operation must reject callers whose Google email does not match `ALLOWED_GMAIL_EMAIL`
+- **MCP protocol uses stdout** — never print to stdout in tool handlers; use `ctx.info()`/`ctx.error()` instead
 
 ## Architecture
 
-- `main.py` — CLI entry point; also registered as `gmail-mcp` script in `pyproject.toml`
+- `main.py` — Horizon import shim exposing `mcp`
+- `remote.py` — remote Google OAuth server assembly
+- `src/remote_auth.py` — per-request Google access token to Gmail session adapter
 - `src/server.py` — FastMCP server with tools, prompts, resources
-- `src/auth_manager.py` — OAuth2 flow, multi-user switching, Fernet-encrypted token storage in `~/.gmail-mcp/`
-- `src/gmail_client.py` — Gmail API wrapper
+- `src/gmail_gateway.py` — Gmail API wrapper
 - `src/models.py` — Pydantic models
-- `src/resources/` — static templates and guidelines (not API clients)
+- `src/resources/` — static templates and guidelines
 
 ## Notable Conventions
 
-- `src` imports are relative (`from src.server import ...`) because `main.py` runs from repo root; no `[build-system]` in pyproject.toml
-- Scopes: `gmail.send` and `gmail.modify`
-- Authentication falls back to console flow (WSL-safe) if browser open fails
+- Required Google OAuth scopes: `openid`, `userinfo.email`, `gmail.send`, `gmail.modify`
+- Deployment config comes from environment variables, not local credential files
+- `ALLOWED_GMAIL_EMAIL` is the only Gmail identity allowed to operate tools
