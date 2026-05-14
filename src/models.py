@@ -1,7 +1,14 @@
 """Pydantic models for Gmail MCP server."""
 
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, List
+from pydantic import BaseModel, Field
+
+
+class EmailAddress(BaseModel):
+    """Email address with optional display name."""
+
+    name: str = ""
+    email: str
 
 
 class EmailRequest(BaseModel):
@@ -41,3 +48,43 @@ class UserInfo(BaseModel):
     email: str
     messages_total: int
     threads_total: int
+
+
+class AttachmentInfo(BaseModel):
+    """Email attachment metadata."""
+
+    filename: str
+    mime_type: str
+
+
+class EmailListItem(BaseModel):
+    """Summary info for one message in a listing."""
+
+    id: str
+    thread_id: str
+    label_ids: List[str]
+    snippet: str
+    subject: str
+    from_: str = Field(alias="from")
+    to: str
+    date: str
+    internal_date: str
+
+
+class EmailDetail(BaseModel):
+    """Full content of a single email message."""
+
+    id: str
+    thread_id: str
+    label_ids: List[str]
+    snippet: str
+    subject: str
+    from_: EmailAddress = Field(alias="from")
+    to: List[EmailAddress]
+    cc: List[EmailAddress]
+    bcc: List[EmailAddress]
+    date: str
+    internal_date: str
+    body_text: str
+    body_html: str
+    attachments: List[AttachmentInfo]

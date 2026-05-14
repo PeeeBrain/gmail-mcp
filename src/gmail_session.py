@@ -1,6 +1,6 @@
 """Gmail operation session for the selected local Gmail user."""
 
-from typing import Protocol
+from typing import Protocol, List, Optional
 
 from google.oauth2.credentials import Credentials
 
@@ -60,6 +60,36 @@ class GmailSession:
 
     def delete_draft(self, draft_id: str) -> bool:
         return self._gateway.delete_draft(draft_id)
+
+    def list_emails(
+        self,
+        query: str = "",
+        label_ids: Optional[List[str]] = None,
+        max_results: int = 20,
+        include_spam_trash: bool = False,
+        page_token: Optional[str] = None,
+    ):
+        items = self._gateway.list_messages(
+            query=query,
+            label_ids=label_ids,
+            max_results=max_results,
+            include_spam_trash=include_spam_trash,
+            page_token=page_token,
+        )
+        return [item.model_dump(by_alias=True) for item in items]
+
+    def get_email(self, email_id: str):
+        return self._gateway.get_message(email_id).model_dump(by_alias=True)
+
+    def mark_as_read(self, email_id: str) -> bool:
+        return self._gateway.modify_labels(
+            email_id, remove_label_ids=["UNREAD"]
+        )
+
+    def mark_as_unread(self, email_id: str) -> bool:
+        return self._gateway.modify_labels(
+            email_id, add_label_ids=["UNREAD"]
+        )
 
 
 class GmailSessionFactory:
